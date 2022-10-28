@@ -1,0 +1,6 @@
+#
+#
+#
+export MULLE_SDE_INSTALLED_VERSION="1.1.3"
+
+
