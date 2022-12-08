@@ -2,21 +2,8 @@
 
 [ "${CLANG_COSMOPOLITAN_TRACE:-}" = 'YES' ] && set -x && : "$0" "$@"
 
-
-if [ -z "${DEPENDENCY_DIR}" ]
-then
-   if [ ! -z "${MULLE_VIRTUAL_ROOT}" ]
-   then
-      DEPENDENCY_DIR="${MULLE_VIRTUAL_ROOT:-.}/dependency"
-   fi
-
-   if [ -z "${DEPENDENCY_DIR}" ] || [ ! -d "${DEPENDENCY_DIR}" ]
-   then
-      DEPENDENCY_DIR="`dirname -- "$0" `"
-      DEPENDENCY_DIR="`dirname -- "${DEPENDENCY_DIR}" `"
-   fi
-fi
-
+COSMOPOLITAN_INSTALL_DIR="`dirname -- "$0" `"
+COSMOPOLITAN_INSTALL_DIR="`dirname -- "${COSMOPOLITAN_INSTALL_DIR}" `"
 
 # gcc -g -Os -static -nostdlib -nostdinc -fno-pie -no-pie -mno-red-zone \
 #   -fno-omit-frame-pointer -pg -mnop-mcount -mno-tls-direct-seg-refs -gdwarf-4 \
@@ -50,7 +37,7 @@ COSMOPOLITAN_CFLAGS="\
 -D__MULLE_COSMOPOLITAN__ \
 -D__MULLE_STATICALLY_LINKED__ \
 -D__STDC_NO_THREADS__ \
--isysroot '${DEPENDENCY_DIR}' \
+-isysroot '${COSMOPOLITAN_INSTALL_DIR}' \
 -fno-omit-frame-pointer \
 -fno-pie \
 -gdwarf-4 \
@@ -62,13 +49,14 @@ COSMOPOLITAN_LDFLAGS="\
 -gdwarf-4 \
 -nostdlib \
 -no-pie \
--Wl,-T,'${DEPENDENCY_DIR}/lib/ape.lds' \
--Wl,--gc-sections"
+-Wl,-T,'${COSMOPOLITAN_INSTALL_DIR}/lib/ape.lds' \
+-Wl,--gc-sections \
+-Wl,-zmax-page-size=0x1000"
 
 COSMOPOLITAN_OBJECTS="\
--Wl,'${DEPENDENCY_DIR}/lib/crt.o' \
--Wl,'${DEPENDENCY_DIR}/lib/ape-no-modify-self.o' \
--Wl,'${DEPENDENCY_DIR}/lib/cosmopolitan.a'"
+-Wl,'${COSMOPOLITAN_INSTALL_DIR}/lib/crt.o' \
+-Wl,'${COSMOPOLITAN_INSTALL_DIR}/lib/ape-no-modify-self.o' \
+-Wl,'${COSMOPOLITAN_INSTALL_DIR}/lib/cosmopolitan.a'"
 
 #
 # Quote incoming arguments for shell expansion
@@ -120,6 +108,7 @@ else
    eval clang ${COSMOPOLITAN_LDFLAGS} \
               ${args} \
               ${COSMOPOLITAN_OBJECTS} &&
+   readelf -Wa "${outputfile}" &&
    objcopy -S -O binary "${outputfile}" "${outputfile}.tmp" &&
    mv "${outputfile}.tmp" "${outputfile}"
 fi
