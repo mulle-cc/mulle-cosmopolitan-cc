@@ -8,7 +8,7 @@
    "license" : "UNLICENSED",
    "repository" : {
       "type" : "git",
-      "url" : "mulle-cc/mulle-cosmopolitan-cc"
+      "url" : "github:mulle-cc/mulle-cosmopolitan-cc"
    },
    "dependencies" : {
    }
