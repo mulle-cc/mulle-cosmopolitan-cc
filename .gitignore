@@ -4,3 +4,5 @@ var/
 version.old
 .gdb_history
 .ackrc
+mulle-template-composer-*
+mulle-markdown-preview-*.html

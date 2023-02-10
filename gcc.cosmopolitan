@@ -5,6 +5,23 @@
 COSMOPOLITAN_INSTALL_DIR="`dirname -- "$0" `"
 COSMOPOLITAN_INSTALL_DIR="`dirname -- "${COSMOPOLITAN_INSTALL_DIR}" `"
 
+COMPILER="`echo "$0" | sed -e 's|^.*/||' -e 's|^\([^.]*\)\.cosmopolitan$|\1|'`"
+
+#
+# check with https://github.com/jart/cosmopolitan/blob/master/tool/scripts/cosmocc
+# to keep flags in sync
+
+if [ -f "${COSMOPOLITAN_INSTALL_DIR}/lib/ape.lds" ]
+then
+   COSMOPOLITAN_CPPFLAGS="\
+   -isysroot '${COSMOPOLITAN_INSTALL_DIR}'"
+else
+   COSMOPOLITAN_INSTALL_DIR="/opt/cosmo/o"
+   COSMOPOLITAN_CPPFLAGS="\
+-isystem '${COSMOPOLITAN_INSTALL_DIR}/include' \
+-isystem '${COSMOPOLITAN_INSTALL_DIR}/../libc/isystem' \
+-include 'libc/integral/normalize.inc'"
+fi
 
 # gcc -g -Os -static -nostdlib -nostdinc -fno-pie -no-pie -mno-red-zone \
 #   -fno-omit-frame-pointer -pg -mnop-mcount -mno-tls-direct-seg-refs -gdwarf-4 \
@@ -31,28 +48,33 @@ COSMOPOLITAN_PROFILE_CFLAGS="\
 -mnop-mcount \
 -pg"
 
-COSMOPOLITAN_CFLAGS="\
--static \
+COSMOPOLITAN_CPPFLAGS="\
+${COSMOPOLITAN_CPPFLAGS} \
 -nostdinc \
--nostdlib \
 -D__MULLE_COSMOPOLITAN__ \
 -D__MULLE_STATICALLY_LINKED__ \
--D__STDC_NO_THREADS__ \
--isysroot '${COSMOPOLITAN_INSTALL_DIR}' \
+-D__STDC_NO_THREADS__"
+
+COSMOPOLITAN_CFLAGS="\
+-nostdlib \
 -fno-omit-frame-pointer \
+-fdata-sections \
+-ffunction-sections \
 -fno-pie \
 -gdwarf-4 \
 -mno-red-zone \
 -mno-tls-direct-seg-refs"
 
 COSMOPOLITAN_LDFLAGS="\
+-static \
+-nostdlib \
 -fuse-ld=bfd \
 -gdwarf-4 \
--nostdlib \
 -no-pie \
 -Wl,-T,'${COSMOPOLITAN_INSTALL_DIR}/lib/ape.lds' \
 -Wl,--gc-sections \
--Wl,-zmax-page-size=0x1000"
+-Wl,-melf_x86_64 \
+-Wl,-z,max-page-size=0x1000"
 
 COSMOPOLITAN_OBJECTS="\
 -Wl,'${COSMOPOLITAN_INSTALL_DIR}/lib/crt.o' \
@@ -62,8 +84,9 @@ COSMOPOLITAN_OBJECTS="\
 #
 # Quote incoming arguments for shell expansion
 #
-nolink=
 outputfile="a.out"
+compile='NO'
+link='YES'
 
 args=""
 prevarg=""
@@ -73,7 +96,8 @@ do
    # True bourne sh doesn't know ${a//b/c} and <<<
    case "${arg}" in
       "-c")
-         nolink='YES'
+         link='NO'
+         compile='YES'
       ;;
 
       *\'*)
@@ -83,6 +107,12 @@ do
 ${arg}
 EOF
 `"
+      ;;
+   esac
+
+   case "${arg}" in
+      *.[Cc]|*.[Mm]|*.[Ss]|*.[Cc][Cc]|*.[Mm][Mm]|*.[Aa][Aa][Mm]|*.[Cc][Pp][Pp]|*.[Cc][Xx][Xx])
+         compile='YES'
       ;;
    esac
 
@@ -101,15 +131,32 @@ EOF
 done
 
 
-if [ "${nolink}" = 'YES' ]
+if [ "${compile}" = 'YES' ]
 then
-   eval exec gcc ${COSMOPOLITAN_CFLAGS}  \
-                 ${args}
-else
-   eval gcc ${COSMOPOLITAN_LDFLAGS} \
-            ${args} \
-            ${COSMOPOLITAN_OBJECTS} &&
+   if [ "${link}" = 'NO' ]
+   then
+      eval exec "${COMPILER}" ${COSMOPOLITAN_CPPFLAGS} \
+                              ${COSMOPOLITAN_CFLAGS}  \
+                              ${args}
+      exit $?
+   fi
+
+   eval "${COMPILER}" ${COSMOPOLITAN_CPPFLAGS} \
+                      ${COSMOPOLITAN_CFLAGS} \
+                      ${COSMOPOLITAN_LDFLAGS} \
+                      ${args} \
+                      ${COSMOPOLITAN_OBJECTS} &&
    readelf -Wa "${outputfile}" &&
    objcopy -S -O binary "${outputfile}" "${outputfile}.tmp" &&
    mv "${outputfile}.tmp" "${outputfile}"
+   exit $?
 fi
+
+# as above but dont pollute with CFLAGS
+eval "${COMPILER}" ${COSMOPOLITAN_LDFLAGS} \
+                   ${args} \
+                   ${COSMOPOLITAN_OBJECTS} &&
+readelf -Wa "${outputfile}" &&
+objcopy -S -O binary "${outputfile}" "${outputfile}.tmp" &&
+mv "${outputfile}.tmp" "${outputfile}"
+exit $?
