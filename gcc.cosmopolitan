@@ -2,7 +2,9 @@
 
 [ "${GCC_COSMOPOLITAN_TRACE:-}" = 'YES' ] && set -x && : "$0" "$@"
 
-COSMOPOLITAN_INSTALL_DIR="`dirname -- "$0" `"
+# make absolute path with readlink "trick", we need this for -isystem later
+COSMOPOLITAN_INSTALL_DIR="`readlink -f "$0"`"
+COSMOPOLITAN_INSTALL_DIR="`dirname -- "${COSMOPOLITAN_INSTALL_DIR}" `"
 COSMOPOLITAN_INSTALL_DIR="`dirname -- "${COSMOPOLITAN_INSTALL_DIR}" `"
 
 COMPILER="`echo "$0" | sed -e 's|^.*/||' -e 's|^\([^.]*\)\.cosmopolitan$|\1|'`"
@@ -10,6 +12,7 @@ COMPILER="`echo "$0" | sed -e 's|^.*/||' -e 's|^\([^.]*\)\.cosmopolitan$|\1|'`"
 #
 # check with https://github.com/jart/cosmopolitan/blob/master/tool/scripts/cosmocc
 # to keep flags in sync
+
 
 if [ -f "${COSMOPOLITAN_INSTALL_DIR}/lib/ape.lds" ]
 then
