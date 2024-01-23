@@ -1,3 +1,7 @@
+### 0.0.3
+
+* use better absolute path trick
+
 ### 0.0.2
 
 * remove package.json as it conflicts with clib.json
